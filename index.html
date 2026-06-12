@@ -503,6 +503,19 @@ body {
   color: var(--color-text-muted); font-weight: 600; line-height: 1.7;
 }
 
+/* 좌표 찍기 도우미 (픽업존 위치 확정용 — 확정 후 통째로 지워도 되는 보조 도구) */
+#coord-helper { margin-top: 16px; }
+#coord-helper textarea {
+  width: 100%;
+  font-family: monospace; font-size: 14px;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0 12px;
+  resize: vertical;
+}
+
 /* ═══════════════ 6. 홈(히어로) 전용 스타일 ═══════════════ */
 .hero {
   background: linear-gradient(170deg, var(--color-navy) 0%, var(--color-navy-dark) 100%);
@@ -1106,6 +1119,20 @@ body {
       <p class="subsection-note">
         ※ 픽업존 위치가 확정되면 지도에 마커로 표시됩니다. (현재는 학원가 중심만 표시)
       </p>
+
+      <!-- 📍 좌표 찍기 도우미: 픽업존 위치를 잡을 때만 쓰는 보조 도구.
+           위치가 다 정해지면 이 카드(div#coord-helper)와 관련 JS는 통째로 지워도 됩니다. -->
+      <div class="card" id="coord-helper">
+        <h4>📍 좌표 찍기 도우미</h4>
+        <p class="subsection-note">
+          지도를 클릭하면 그 지점의 좌표가 아래 칸에 쌓입니다.
+          픽업존(예: 귀인로 190번길·평촌대로 양쪽·귀인로 172번길의 방향별 8곳)을 차례로 클릭한 뒤,
+          아래 내용을 복사해 전달하거나 코드의 <code>PICKUP_ZONES</code>에 붙여넣으세요.
+        </p>
+        <textarea id="coord-output" rows="9" readonly
+          placeholder="여기에 클릭한 좌표가 PICKUP_ZONES 형식으로 표시됩니다."></textarea>
+        <button type="button" class="btn btn--primary" id="coord-reset">전체 지우기</button>
+      </div>
     </div>
   </section>
 
@@ -1361,6 +1388,31 @@ function drawZoneMap() {
       title: zone.name,
     });
   });
+
+  // ── 좌표 찍기 도우미: 지도를 클릭하면 좌표를 기록 (픽업존 위치 확정용) ──
+  const out = document.getElementById("coord-output");
+  const resetBtn = document.getElementById("coord-reset");
+  let clickCount = 0;
+  let helperMarkers = []; // 클릭으로 찍은 마커들 (지울 때 사용)
+
+  naver.maps.Event.addListener(map, "click", function (e) {
+    clickCount += 1;
+    const lat = e.coord.lat().toFixed(6);
+    const lng = e.coord.lng().toFixed(6);
+    // 클릭 지점에 번호 마커 표시
+    const marker = new naver.maps.Marker({ position: e.coord, map: map, title: "지점 " + clickCount });
+    helperMarkers.push(marker);
+    // PICKUP_ZONES에 그대로 붙여넣을 수 있는 형식으로 한 줄 추가
+    if (out) out.value += '{ name: "지점 ' + clickCount + '", lat: ' + lat + ", lng: " + lng + " },\n";
+  });
+
+  // '전체 지우기' 버튼: 기록과 마커를 모두 초기화 (onclick 사용 → 중복 등록 방지)
+  if (resetBtn) resetBtn.onclick = function () {
+    if (out) out.value = "";
+    clickCount = 0;
+    helperMarkers.forEach(function (m) { m.setMap(null); });
+    helperMarkers = [];
+  };
 }
 
 // 지도 자리에 안내문을 표시 (로딩 실패 등)
