@@ -485,6 +485,24 @@ body {
 .calc-result .calc-conclusion strong { color: var(--color-accent-dark); font-size: 24px; }
 .calc-result .calc-note { font-size: 13.5px; color: var(--color-text-muted); margin-top: 8px; }
 
+/* ═══════════════ 5-4. 네이버 지도 영역 (#model 존 지도) ═══════════════
+   지도는 외부(네이버) 스크립트가 필요해 '배포된 github.io 주소'에서만 보입니다.
+   파일 더블클릭(오프라인)에서는 아래 .map-fallback 안내문만 표시됩니다. */
+#zone-map {
+  width: 100%;
+  height: 440px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-bg-section);
+}
+.map-fallback {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 24px;
+  color: var(--color-text-muted); font-weight: 600; line-height: 1.7;
+}
+
 /* ═══════════════ 6. 홈(히어로) 전용 스타일 ═══════════════ */
 .hero {
   background: linear-gradient(170deg, var(--color-navy) 0%, var(--color-navy-dark) 100%);
@@ -623,6 +641,9 @@ body {
 
   /* STEP 3 추가: 수학 모델 페이지의 슬라이더·변수 목록도 1열로 */
   .calc-grid, .var-list { grid-template-columns: 1fr; }
+
+  /* 지도: 모바일에서는 높이를 낮춤 */
+  #zone-map { height: 320px; }
 }
 </style>
 </head>
@@ -1075,10 +1096,16 @@ body {
       <!-- ── 존 위치·커버리지 지도 (GitHub Pages 배포 후 네이버 지도 연동 예정) ── -->
       <!-- SLOT: model-zone-map -->
       <h3 class="subsection-title">존 위치 · 커버리지 지도</h3>
-      <div class="placeholder-box">
-        도출된 k개 픽업존의 위치와 커버리지를 표시할 지도 자리입니다.<br>
-        (네이버 지도 연동 — GitHub Pages 배포 후 예정)
+      <!-- 네이버 지도가 들어갈 컨테이너. 지도 로딩 전·실패 시에는 안내문(.map-fallback) 표시 -->
+      <div id="zone-map">
+        <div class="map-fallback">
+          지도는 배포된 사이트(github.io)에서만 표시됩니다.<br>
+          잠시만 기다려 주세요…
+        </div>
       </div>
+      <p class="subsection-note">
+        ※ 픽업존 위치가 확정되면 지도에 마커로 표시됩니다. (현재는 학원가 중심만 표시)
+      </p>
     </div>
   </section>
 
@@ -1158,6 +1185,24 @@ const SITE_CONFIG = {
 /* 존재하는 페이지 ID 목록 (최상단 계약 문서와 동일해야 함) */
 const PAGE_IDS = ["home", "problem", "proposal", "model", "simulator", "policy", "team"];
 
+/* ───────── 네이버 지도 설정 (여기만 바꾸면 됩니다) ─────────
+   - clientId: 네이버 클라우드 콘솔의 'Client ID'. (Secret은 절대 넣지 않습니다!)
+   - paramNames: 계정 종류에 따라 파라미터 이름이 다릅니다.
+       신규/개인 통합 계정 = "ncpKeyId" (요즘 기본),  구형 계정 = "ncpClientId"
+       지도가 인증오류로 안 뜨면 자동으로 다른 이름으로 한 번 더 시도합니다.
+   - mapCenter: 지도 중심 좌표(평촌 학원가 대략값). 필요하면 숫자만 바꾸세요.
+   - PICKUP_ZONES: 픽업존이 확정되면 {이름, 위도(lat), 경도(lng)}를 추가하면 마커가 찍힙니다. */
+const NAVER_MAP_CONFIG = {
+  clientId: "nipxdak70u",
+  paramNames: ["ncpKeyId", "ncpClientId"],
+  mapCenter: { lat: 37.3905, lng: 126.9510 },
+  mapZoom: 16,
+};
+const PICKUP_ZONES = [
+  // 예시) { name: "A존", lat: 37.3908, lng: 126.9525 },
+  // 실제 위치가 정해지면 위 형식으로 줄을 추가하세요. (지금은 비어 있음 = 마커 없음)
+];
+
 /* ── 설정값을 화면에 반영 ──
    data-site-title / data-club-name / data-last-updated 속성이
    붙은 모든 요소의 글자를 SITE_CONFIG 값으로 바꿉니다. */
@@ -1202,6 +1247,9 @@ function route() {
   // 4) 페이지가 바뀌면 맨 위로 스크롤하고, 모바일 메뉴는 닫기
   window.scrollTo(0, 0);
   closeMobileMenu();
+
+  // 5) 수학 모델 페이지에 처음 들어오면 그때 지도를 불러옴 (필요할 때만 로드)
+  if (pageId === "model") initZoneMap();
 }
 
 /* ── 모바일 햄버거 메뉴 ── */
@@ -1258,6 +1306,67 @@ function setupZoneCalc() {
     el.addEventListener("input", update);
   });
   update(); // 첫 화면 표시
+}
+
+/* ── 네이버 지도: #model 페이지의 존 위치 지도 ──
+   외부 스크립트가 필요하므로 배포된 github.io 주소에서만 보입니다.
+   인증 실패 시 다른 파라미터 이름으로 한 번 더 시도하고, 그래도 안 되면 안내문을 띄웁니다. */
+const zoneMapState = { started: false, paramIndex: 0 };
+
+function initZoneMap() {
+  if (zoneMapState.started) return; // 한 번만 불러오기
+  zoneMapState.started = true;
+  loadNaverMapsScript();
+}
+
+function loadNaverMapsScript() {
+  const names = NAVER_MAP_CONFIG.paramNames;
+  // 모든 파라미터 이름을 시도했는데도 실패하면 안내문 표시
+  if (zoneMapState.paramIndex >= names.length) {
+    showMapFallback("지도 인증에 실패했습니다.<br>네이버 콘솔에서 Web 서비스 URL(도메인) 등록을 확인하세요.");
+    return;
+  }
+  const param = names[zoneMapState.paramIndex];
+
+  // 인증 실패 시 네이버가 이 전역 함수를 호출 → 다음 파라미터 이름으로 재시도
+  window.navermap_authFailure = function () {
+    zoneMapState.paramIndex += 1;
+    loadNaverMapsScript();
+  };
+
+  const script = document.createElement("script");
+  script.src = "https://oapi.map.naver.com/openapi/v3/maps.js?" + param + "=" + NAVER_MAP_CONFIG.clientId;
+  script.onload = function () { drawZoneMap(); };
+  script.onerror = function () {
+    showMapFallback("지도 스크립트를 불러오지 못했습니다.<br>인터넷 연결과 배포 주소(github.io)에서 열었는지 확인하세요.");
+  };
+  document.head.appendChild(script);
+}
+
+function drawZoneMap() {
+  // 지도 라이브러리가 아직 준비되지 않았으면 종료
+  if (!window.naver || !naver.maps) return;
+  const box = document.getElementById("zone-map");
+  if (!box) return;
+  box.innerHTML = ""; // 재시도 시 이전 내용(안내문/깨진 지도) 비우기
+
+  const center = new naver.maps.LatLng(NAVER_MAP_CONFIG.mapCenter.lat, NAVER_MAP_CONFIG.mapCenter.lng);
+  const map = new naver.maps.Map(box, { center: center, zoom: NAVER_MAP_CONFIG.mapZoom });
+
+  // 픽업존이 확정되면 PICKUP_ZONES 배열의 각 위치에 마커를 찍음
+  PICKUP_ZONES.forEach(function (zone) {
+    new naver.maps.Marker({
+      position: new naver.maps.LatLng(zone.lat, zone.lng),
+      map: map,
+      title: zone.name,
+    });
+  });
+}
+
+// 지도 자리에 안내문을 표시 (로딩 실패 등)
+function showMapFallback(messageHtml) {
+  const box = document.getElementById("zone-map");
+  if (box) box.innerHTML = '<div class="map-fallback">' + messageHtml + "</div>";
 }
 
 /* ── 시작 ── */
