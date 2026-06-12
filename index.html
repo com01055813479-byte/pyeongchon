@@ -1117,7 +1117,7 @@ body {
         </div>
       </div>
       <p class="subsection-note">
-        ※ 픽업존 위치가 확정되면 지도에 마커로 표시됩니다. (현재는 학원가 중심만 표시)
+        ※ 픽업존이 확정되면 지도에 사각형 구역으로 표시됩니다. (현재는 학원가 중심만 표시)
       </p>
 
       <!-- 📍 좌표 찍기 도우미: 픽업존 위치를 잡을 때만 쓰는 보조 도구.
@@ -1125,12 +1125,12 @@ body {
       <div class="card" id="coord-helper">
         <h4>📍 좌표 찍기 도우미</h4>
         <p class="subsection-note">
-          지도를 클릭하면 그 지점의 좌표가 아래 칸에 쌓입니다.
-          픽업존(예: 귀인로 190번길·평촌대로 양쪽·귀인로 172번길의 방향별 8곳)을 차례로 클릭한 뒤,
-          아래 내용을 복사해 전달하거나 코드의 <code>PICKUP_ZONES</code>에 붙여넣으세요.
+          구역 하나마다 <strong>대각선 양 끝 두 점을 클릭</strong>하면 사각형이 그려집니다.
+          픽업존(예: 귀인로 190번길·평촌대로 양쪽·귀인로 172번길의 방향별 8개 구역)을
+          하나씩 그린 뒤, 아래 내용을 복사해 전달하거나 코드의 <code>PICKUP_ZONES</code>에 붙여넣으세요.
         </p>
         <textarea id="coord-output" rows="9" readonly
-          placeholder="여기에 클릭한 좌표가 PICKUP_ZONES 형식으로 표시됩니다."></textarea>
+          placeholder="구역마다 두 꼭짓점을 클릭하면 PICKUP_ZONES 형식으로 좌표가 표시됩니다."></textarea>
         <button type="button" class="btn btn--primary" id="coord-reset">전체 지우기</button>
       </div>
     </div>
@@ -1218,7 +1218,8 @@ const PAGE_IDS = ["home", "problem", "proposal", "model", "simulator", "policy",
        신규/개인 통합 계정 = "ncpKeyId" (요즘 기본),  구형 계정 = "ncpClientId"
        지도가 인증오류로 안 뜨면 자동으로 다른 이름으로 한 번 더 시도합니다.
    - mapCenter: 지도 중심 좌표(평촌 학원가 대략값). 필요하면 숫자만 바꾸세요.
-   - PICKUP_ZONES: 픽업존이 확정되면 {이름, 위도(lat), 경도(lng)}를 추가하면 마커가 찍힙니다. */
+   - PICKUP_ZONES: 픽업존(사각형 구역). 구역마다 두 꼭짓점(남서쪽 sw, 북동쪽 ne)을 적으면
+     지도에 사각형이 그려집니다. 좌표는 아래 '좌표 찍기 도우미'로 쉽게 딸 수 있습니다. */
 const NAVER_MAP_CONFIG = {
   clientId: "nipxdak70u",
   paramNames: ["ncpKeyId", "ncpClientId"],
@@ -1226,8 +1227,8 @@ const NAVER_MAP_CONFIG = {
   mapZoom: 16,
 };
 const PICKUP_ZONES = [
-  // 예시) { name: "A존", lat: 37.3908, lng: 126.9525 },
-  // 실제 위치가 정해지면 위 형식으로 줄을 추가하세요. (지금은 비어 있음 = 마커 없음)
+  // 예시) { name: "A구역", sw: { lat: 37.3880, lng: 126.9500 }, ne: { lat: 37.3888, lng: 126.9512 } },
+  // 실제 구역이 정해지면 위 형식으로 줄을 추가하세요. (지금은 비어 있음 = 사각형 없음)
 ];
 
 /* ── 설정값을 화면에 반영 ──
@@ -1380,38 +1381,65 @@ function drawZoneMap() {
   const center = new naver.maps.LatLng(NAVER_MAP_CONFIG.mapCenter.lat, NAVER_MAP_CONFIG.mapCenter.lng);
   const map = new naver.maps.Map(box, { center: center, zoom: NAVER_MAP_CONFIG.mapZoom });
 
-  // 픽업존이 확정되면 PICKUP_ZONES 배열의 각 위치에 마커를 찍음
-  PICKUP_ZONES.forEach(function (zone) {
-    new naver.maps.Marker({
-      position: new naver.maps.LatLng(zone.lat, zone.lng),
+  // 사각형 구역 하나를 지도에 그리는 함수 (sw=남서쪽, ne=북동쪽 꼭짓점)
+  function drawRectZone(zone) {
+    const bounds = new naver.maps.LatLngBounds(
+      new naver.maps.LatLng(zone.sw.lat, zone.sw.lng),
+      new naver.maps.LatLng(zone.ne.lat, zone.ne.lng)
+    );
+    return new naver.maps.Rectangle({
       map: map,
-      title: zone.name,
+      bounds: bounds,
+      strokeColor: "#0E7490", strokeOpacity: 0.9, strokeWeight: 2, // 테두리: 강조색
+      fillColor: "#0E7490", fillOpacity: 0.15,                      // 채움: 옅은 강조색
     });
-  });
+  }
 
-  // ── 좌표 찍기 도우미: 지도를 클릭하면 좌표를 기록 (픽업존 위치 확정용) ──
+  // 픽업존이 확정되면 PICKUP_ZONES의 각 구역을 사각형으로 표시
+  PICKUP_ZONES.forEach(drawRectZone);
+
+  // ── 좌표 찍기 도우미: 구역마다 두 꼭짓점을 클릭하면 사각형이 그려짐 ──
   const out = document.getElementById("coord-output");
   const resetBtn = document.getElementById("coord-reset");
-  let clickCount = 0;
-  let helperMarkers = []; // 클릭으로 찍은 마커들 (지울 때 사용)
+  let zoneCount = 0;
+  let firstCorner = null;       // 사각형의 첫 번째 꼭짓점 (두 번째 클릭 대기 중)
+  let firstMarker = null;       // 첫 꼭짓점에 잠깐 표시하는 임시 마커
+  let helperShapes = [];        // 도우미가 그린 사각형들 (지울 때 사용)
 
   naver.maps.Event.addListener(map, "click", function (e) {
-    clickCount += 1;
-    const lat = e.coord.lat().toFixed(6);
-    const lng = e.coord.lng().toFixed(6);
-    // 클릭 지점에 번호 마커 표시
-    const marker = new naver.maps.Marker({ position: e.coord, map: map, title: "지점 " + clickCount });
-    helperMarkers.push(marker);
-    // PICKUP_ZONES에 그대로 붙여넣을 수 있는 형식으로 한 줄 추가
-    if (out) out.value += '{ name: "지점 ' + clickCount + '", lat: ' + lat + ", lng: " + lng + " },\n";
+    if (!firstCorner) {
+      // (1) 첫 번째 꼭짓점: 임시 마커만 찍고 두 번째 클릭을 기다림
+      firstCorner = e.coord;
+      firstMarker = new naver.maps.Marker({ position: e.coord, map: map });
+      return;
+    }
+    // (2) 두 번째 꼭짓점: 두 점으로 사각형 완성
+    zoneCount += 1;
+    const lat1 = firstCorner.lat(), lng1 = firstCorner.lng();
+    const lat2 = e.coord.lat(), lng2 = e.coord.lng();
+    // 클릭 순서와 상관없도록 남서(min)·북동(max) 꼭짓점을 계산
+    const sw = { lat: Math.min(lat1, lat2), lng: Math.min(lng1, lng2) };
+    const ne = { lat: Math.max(lat1, lat2), lng: Math.max(lng1, lng2) };
+
+    if (firstMarker) { firstMarker.setMap(null); firstMarker = null; } // 임시 마커 제거
+    helperShapes.push(drawRectZone({ sw: sw, ne: ne }));
+
+    // PICKUP_ZONES에 그대로 붙여넣을 수 있는 한 줄로 기록
+    if (out) out.value +=
+      '{ name: "구역 ' + zoneCount + '", sw: { lat: ' + sw.lat.toFixed(6) + ", lng: " + sw.lng.toFixed(6) +
+      " }, ne: { lat: " + ne.lat.toFixed(6) + ", lng: " + ne.lng.toFixed(6) + " } },\n";
+
+    firstCorner = null; // 다음 구역 준비
   });
 
-  // '전체 지우기' 버튼: 기록과 마커를 모두 초기화 (onclick 사용 → 중복 등록 방지)
+  // '전체 지우기' 버튼: 기록과 사각형을 모두 초기화 (onclick 사용 → 중복 등록 방지)
   if (resetBtn) resetBtn.onclick = function () {
     if (out) out.value = "";
-    clickCount = 0;
-    helperMarkers.forEach(function (m) { m.setMap(null); });
-    helperMarkers = [];
+    zoneCount = 0;
+    firstCorner = null;
+    if (firstMarker) { firstMarker.setMap(null); firstMarker = null; }
+    helperShapes.forEach(function (s) { s.setMap(null); });
+    helperShapes = [];
   };
 }
 
