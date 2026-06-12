@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<!--
+═══════════════════════════════════════════════════════════════════
+  평촌 하원길 프로젝트 — 사이트 골격 (STEP 1)
+  이 주석 블록은 이후 단계(STEP 2~)가 의존하는 "계약 문서"입니다.
+  아래 ID / 슬롯 이름 / 토큰 이름은 절대 임의로 바꾸지 마세요.
+═══════════════════════════════════════════════════════════════════
+
+[1] 페이지 섹션 ID (해시 라우팅 주소와 동일)
+  #home       홈(히어로)
+  #problem    문제 현황
+  #proposal   제안 개요 (투트랙 시스템)
+  #model      수학 모델
+  #simulator  시뮬레이션 (내부에 #sim-root 컨테이너 존재)
+  #policy     정책 제안
+  #team       팀 소개
+
+[2] 콘텐츠 슬롯 (HTML 주석으로 표시, 이후 단계에서 이 자리에 내용 삽입)
+  problem  : SLOT: problem-photos        현장 사진
+             SLOT: problem-stats         혼잡 데이터/통계
+             SLOT: problem-map           골목 지도
+  proposal : SLOT: proposal-two-track    투트랙(주차장 대기형/자택 출발형) 설명
+             SLOT: proposal-flow         전체 운영 흐름도
+  model    : SLOT: model-zone-inequality      구역 수 N 도출 부등식
+             SLOT: model-slot-assignment      수용량 기반 시간대 배정
+             SLOT: model-departure-inequality 차량별 출발 시각 부등식(ITS 연동)
+  simulator: SLOT: simulator-ui          시뮬레이터 본체 (#sim-root 내부)
+  policy   : SLOT: policy-demand-1       정책 요구 1 (회원제/개인정보 기반)
+             SLOT: policy-demand-2       정책 요구 2 (알림 인프라/픽업존 연계)
+  team     : SLOT: team-members          팀원 소개
+             SLOT: team-activity         활동 기록
+
+[3] 디자인 토큰 (CSS :root 변수 — 색/글자 크기 수정은 여기서만)
+  색상   : --color-navy, --color-navy-dark, --color-accent,
+           --color-yellow, --color-bg, --color-bg-section,
+           --color-text, --color-text-muted, --color-border
+  타이포 : --font-family, --size-hero, --size-title, --size-body
+  기타   : --radius, --shadow, --header-height, --container-width
+
+[4] JS 설정: <script> 최상단 SITE_CONFIG 객체
+  siteTitle(사이트 제목) / clubName(동아리명) / lastUpdated(최종 수정일)
+═══════════════════════════════════════════════════════════════════
+-->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="평촌 학원가 밤 10시 하원 혼잡을 수학 모델로 해결하는 정책 제안 사이트">
+<title>평촌 하원길 프로젝트</title>
+
+<style>
+/* ═══════════════ 1. 디자인 토큰 (여기 값만 바꾸면 사이트 전체에 적용됩니다) ═══════════════ */
+:root {
+  /* 색상 */
+  --color-navy:        #1B2A4A;   /* 주 색상: 진한 남색 (제목, 헤더) */
+  --color-navy-dark:   #13203A;   /* 남색보다 더 어두운 색 (호버 등) */
+  --color-accent:      #0E7490;   /* 강조색: 차분한 청록 (버튼, 활성 메뉴) */
+  --color-accent-dark: #0B5C73;   /* 강조색 호버용 */
+  --color-yellow:      #F5C84B;   /* 따뜻한 노랑: 작은 강조 표시에만 사용! */
+  --color-bg:          #FFFFFF;   /* 기본 배경: 흰색 */
+  --color-bg-section:  #F5F7FA;   /* 연한 회색 섹션 배경 */
+  --color-text:        #24303F;   /* 본문 글자색 (흰 배경 대비 4.5:1 이상) */
+  --color-text-muted:  #4B5563;   /* 보조 글자색 (역시 4.5:1 이상) */
+  --color-border:      #E2E8F0;   /* 옅은 테두리 */
+
+  /* 타이포그래피 */
+  --font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --size-hero:  clamp(40px, 5vw, 52px);  /* 히어로 제목 */
+  --size-title: 28px;                    /* 섹션 제목 */
+  --size-body:  17px;                    /* 본문 */
+
+  /* 공통 수치 */
+  --radius: 10px;
+  --shadow: 0 2px 10px rgba(27, 42, 74, 0.07);
+  --header-height: 64px;
+  --container-width: 1080px;
+}
+
+/* ═══════════════ 2. 기본 리셋 ═══════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--size-body);
+  line-height: 1.7;               /* 한국어 본문은 줄간격을 넉넉하게 */
+  color: var(--color-text);
+  background: var(--color-bg);
+  padding-top: var(--header-height); /* 고정 헤더만큼 본문을 아래로 */
+  word-break: keep-all;           /* 한국어 단어 중간 줄바꿈 방지 */
+}
+
+/* 키보드 사용자를 위한 포커스 표시 (접근성) */
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 화면 낭독기 전용 텍스트 */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* 본문 바로가기 링크 (Tab 키 첫 번째로 나타남) */
+.skip-link {
+  position: absolute; top: -48px; left: 16px;
+  background: var(--color-navy); color: #fff;
+  padding: 10px 18px; border-radius: 0 0 8px 8px;
+  text-decoration: none; z-index: 200;
+  transition: top 0.2s;
+}
+.skip-link:focus { top: 0; }
+
+/* 가운데 정렬 컨테이너 */
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ═══════════════ 3. 고정 상단 내비게이션 ═══════════════ */
+.site-header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-height);
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 100;
+}
+
+.nav-inner {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* 로고 (클릭하면 홈으로) */
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+  color: var(--color-navy);
+  font-weight: 800; font-size: 19px;
+}
+.logo svg { flex-shrink: 0; }
+
+/* 메뉴 목록 */
+.nav-menu {
+  display: flex; align-items: center; gap: 4px;
+  list-style: none;
+}
+.nav-menu a {
+  display: block;
+  padding: 8px 14px;
+  text-decoration: none;
+  color: var(--color-text);
+  font-size: 15.5px; font-weight: 600;
+  border-radius: 6px;
+  border-bottom: 3px solid transparent;
+}
+.nav-menu a:hover { background: var(--color-bg-section); }
+
+/* 현재 보고 있는 페이지의 메뉴 강조 */
+.nav-menu a.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+  border-radius: 6px 6px 0 0;
+}
+
+/* 햄버거 버튼 (모바일에서만 표시) */
+.nav-toggle {
+  display: none;
+  background: none; border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 8px 10px;
+  cursor: pointer; color: var(--color-navy);
+}
+
+/* ═══════════════ 4. 페이지 전환 (해시 라우팅) ═══════════════ */
+.page { display: none; }                /* 모든 페이지를 숨기고 */
+.page.active {                          /* 활성 페이지만 표시 */
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* 움직임을 줄이도록 설정한 사용자는 애니메이션 생략 (접근성) */
+@media (prefers-reduced-motion: reduce) {
+  .page.active { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ═══════════════ 5. 공통 컴포넌트 ═══════════════ */
+
+/* 카드 */
+.card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+/* 버튼 */
+.btn {
+  display: inline-block;
+  padding: 13px 28px;
+  border-radius: 8px;
+  font-size: 16px; font-weight: 700;
+  text-decoration: none; text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.btn--primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+.btn--primary:hover { background: var(--color-accent-dark); }
+.btn--secondary {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+.btn--secondary:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* 작은 배지/라벨 */
+.badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 13px; font-weight: 700;
+  background: #EAF4F7;
+  color: var(--color-accent-dark);
+  border: 1px solid #CBE4EC;
+}
+
+/* 섹션 공통 여백과 제목 */
+.section-pad { padding: 72px 0; }
+.section-title {
+  font-size: var(--size-title);
+  color: var(--color-navy);
+  margin-bottom: 12px;
+}
+.section-lead {
+  color: var(--color-text-muted);
+  max-width: 720px;
+  margin-bottom: 36px;
+}
+
+/* "준비 중" 안내 상자 (이후 단계에서 콘텐츠로 교체됨) */
+.placeholder-box {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-bg-section);
+  font-weight: 600;
+}
+
+/* ═══════════════ 5-2. STEP 2 추가 컴포넌트 (#problem · #proposal 전용) ═══════════════
+   기존 :root 토큰만 사용해 만든 새 부품들입니다. 새로 생긴 슬롯:
+   SLOT: problem-observation-cards / SLOT: problem-city-plan-source */
+
+/* 페이지 안의 소제목과 보조 설명 */
+.subsection-title {
+  font-size: 21px;
+  color: var(--color-navy);
+  margin: 48px 0 8px;
+}
+.subsection-note {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  margin-bottom: 20px;
+}
+.subsection-note a, .callout a {
+  color: var(--color-accent-dark);
+  font-weight: 700;
+}
+
+/* 관찰 지표 카드: 값이 아직 "수집 전"임을 분명히 보여주는 작은 카드 */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.metric-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+.metric-card .metric-label {
+  font-size: 14.5px; font-weight: 700;
+  color: var(--color-text-muted);
+  margin: 10px 0 6px;
+}
+.metric-card .metric-value {
+  font-size: 16px; font-weight: 700;
+  color: var(--color-navy);
+}
+.metric-card .metric-value.pending { /* 아직 수집 전인 값 */
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* 현장 사진 자리: 이미지 파일 없이 CSS로만 그린 회색 상자 */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.photo-grid figure { margin: 0; }
+.photo-placeholder {
+  aspect-ratio: 4 / 3;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-section);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 15px; font-weight: 600;
+}
+.photo-grid figcaption {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* 배경 정보 상자 (행정 계획 등 사실 요약용) */
+.info-box {
+  background: var(--color-bg-section);
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-accent);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+}
+.info-box .source-note {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* 2트랙 카드: 데스크톱에서 나란히 2개, 모바일에서 세로로 쌓임 */
+.track-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.track-card .track-icon { display: block; margin-bottom: 14px; }
+.track-card h4 {
+  font-size: 19px;
+  color: var(--color-navy);
+  margin: 10px 0 6px;
+}
+.track-card .track-summary {
+  font-size: 15.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+.track-card ul { padding-left: 20px; }
+.track-card li { margin-bottom: 6px; font-size: 15.5px; }
+
+/* 작동 흐름 3단계 스트립 */
+.flow-strip {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.flow-step {
+  position: relative;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+.flow-step h4 { font-size: 17px; color: var(--color-navy); margin-bottom: 4px; }
+.flow-step p { font-size: 15px; color: var(--color-text-muted); }
+.flow-num { /* 단계 번호 동그라미 */
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--color-navy); color: #fff;
+  font-weight: 800; font-size: 15px;
+  margin-bottom: 10px;
+}
+/* 단계 사이 화살표 (마지막 칸 제외, 모바일에서는 숨김) */
+.flow-step:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -17px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  font-weight: 800;
+}
+
+/* 다음 페이지 안내 상자 (.badge와 같은 옅은 청록 계열) */
+.callout {
+  margin-top: 40px;
+  background: #EAF4F7;
+  border: 1px solid #CBE4EC;
+  border-radius: var(--radius);
+  padding: 18px 24px;
+}
+
+/* ═══════════════ 5-3. STEP 3 추가 컴포넌트 (#model 전용) ═══════════════
+   수식 상자(.formula-box/.frac), 변수 설명(.var-list),
+   존 개수 도출기(.calc-panel/.calc-grid/.calc-result).
+   새로 생긴 슬롯: SLOT: model-student-wait / SLOT: model-zone-map */
+
+/* 수식 상자 */
+.formula-box {
+  background: var(--color-bg-section);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  font-size: 24px; font-weight: 800;
+  color: var(--color-navy);
+  margin-bottom: 16px;
+}
+.formula-box .formula-small {
+  font-size: 17px; font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 10px;
+}
+/* 분수 모양: 가로줄 위가 분자, 아래가 분모 */
+.frac {
+  display: inline-flex; flex-direction: column;
+  vertical-align: middle;
+  margin: 0 8px;
+  font-size: 20px;
+}
+.frac-top { border-bottom: 2px solid var(--color-navy); padding: 0 10px 3px; }
+.frac-bottom { padding: 3px 10px 0; }
+
+/* 변수 설명 목록 (2열, 모바일 1열) */
+.var-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+  font-size: 15.5px;
+  margin-bottom: 24px;
+}
+.var-list strong { color: var(--color-accent-dark); }
+.var-list .badge { font-size: 11.5px; padding: 1px 9px; }
+
+/* 존 개수 도출기 패널 */
+.calc-panel h4 { font-size: 19px; color: var(--color-navy); margin-bottom: 6px; }
+.calc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 28px;
+  margin: 14px 0 20px;
+}
+.calc-row { display: block; }
+.calc-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 15px; font-weight: 700;
+  margin-bottom: 6px;
+}
+.calc-value { color: var(--color-accent-dark); font-weight: 800; font-size: 17px; }
+.calc-panel input[type="range"] {
+  width: 100%;
+  accent-color: var(--color-accent); /* 슬라이더를 강조색으로 */
+}
+.calc-result {
+  background: var(--color-bg-section);
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-accent);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+}
+.calc-result .calc-math { font-size: 16.5px; color: var(--color-text-muted); }
+.calc-result .calc-conclusion { font-size: 19px; font-weight: 800; color: var(--color-navy); margin-top: 4px; }
+.calc-result .calc-conclusion strong { color: var(--color-accent-dark); font-size: 24px; }
+.calc-result .calc-note { font-size: 13.5px; color: var(--color-text-muted); margin-top: 8px; }
+
+/* ═══════════════ 6. 홈(히어로) 전용 스타일 ═══════════════ */
+.hero {
+  background: linear-gradient(170deg, var(--color-navy) 0%, var(--color-navy-dark) 100%);
+  color: #fff;
+  padding: 88px 0 96px;
+}
+.hero-badge-row { margin-bottom: 20px; }
+.hero .badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: #DCE6F5;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.hero h1 {
+  font-size: var(--size-hero);
+  line-height: 1.3;
+  margin-bottom: 20px;
+  letter-spacing: -0.5px;
+}
+/* 노란색은 이렇게 "작은 강조 표시"에만 사용합니다 */
+.hero .mark {
+  box-shadow: inset 0 -0.45em 0 rgba(245, 200, 75, 0.4);
+}
+.hero-sub {
+  font-size: 19px;
+  color: #C7D2E4;
+  max-width: 640px;
+  margin-bottom: 40px;
+}
+.hero-cta { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 56px; }
+
+/* 핵심 지표 카드 3개 */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.stat-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+/* 카드 내부 구조 (STEP 3 개편):
+   지표 이름 + [개선 전(현황) / 목표 / 시뮬레이션 결과] 3줄.
+   목표값만 구체적인 수치를 보여주고, 현황·실측값은 자리표시로 둡니다. */
+.stat-card .stat-metric {
+  font-size: 16.5px; font-weight: 800;
+  color: #fff;
+  margin-bottom: 14px;
+}
+.stat-rows { display: grid; gap: 10px; }
+.stat-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stat-row dt { flex-shrink: 0; font-size: 13px; font-weight: 700; color: #C7D2E4; }
+.stat-row dd { margin: 0; }
+
+/* 줄 머리 태그 — 색만이 아니라 글자 라벨로도 구분됩니다 (접근성) */
+.tag-target { /* "목표" 태그: 강조색 알약 */
+  display: inline-block;
+  padding: 2px 10px; border-radius: 999px;
+  background: var(--color-accent); color: #fff;
+  font-size: 12px;
+}
+.tag-result { /* "시뮬레이션 결과" 태그: 차분한 회색 알약 */
+  display: inline-block;
+  padding: 2px 10px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #C7D2E4;
+  font-size: 12px;
+}
+
+/* 값 표시: 목표값만 크게, 아직 없는 값은 자리표시 글씨로 */
+.stat-row .value-target { font-size: 21px; font-weight: 800; color: #fff; }
+.stat-row .value-pending { font-size: 14.5px; font-weight: 600; color: #ADBBD2; }
+
+/* 카드 묶음 아래 주석 한 줄 */
+.stat-caption {
+  margin-top: 14px;
+  font-size: 13.5px;
+  color: #ADBBD2;
+}
+
+/* ═══════════════ 7. 시뮬레이터 컨테이너 ═══════════════ */
+#sim-root {
+  min-height: 380px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-section);
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-weight: 700; font-size: 18px;
+}
+
+/* ═══════════════ 8. 푸터 ═══════════════ */
+.site-footer {
+  background: var(--color-navy-dark);
+  color: #ADBBD2;
+  padding: 36px 0;
+  font-size: 14.5px;
+  margin-top: 72px;
+}
+.site-footer .footer-club { color: #fff; font-weight: 700; margin-bottom: 6px; }
+.site-footer p { margin-bottom: 4px; }
+
+/* ═══════════════ 9. 반응형 (768px 미만 = 모바일) ═══════════════ */
+@media (max-width: 768px) {
+  .nav-toggle { display: block; }       /* 햄버거 버튼 표시 */
+
+  /* 메뉴를 헤더 아래 세로 목록으로 변경 */
+  .nav-menu {
+    display: none;
+    position: absolute;
+    top: var(--header-height); left: 0; right: 0;
+    flex-direction: column; align-items: stretch; gap: 0;
+    background: #fff;
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow);
+    padding: 8px 16px 16px;
+  }
+  .nav-menu.open { display: flex; }     /* 햄버거를 누르면 펼침 */
+  .nav-menu a { padding: 14px 10px; border-bottom: none; }
+  .nav-menu a.active {
+    background: #EAF4F7;
+    border-radius: 8px;
+  }
+
+  .hero { padding: 56px 0 64px; }
+  .stat-grid { grid-template-columns: 1fr; }
+  .section-pad { padding: 48px 0; }
+
+  /* STEP 2 추가: 카드 묶음을 모바일에서 세로로 쌓기 */
+  .metric-grid { grid-template-columns: 1fr 1fr; }
+  .photo-grid, .track-grid, .flow-strip { grid-template-columns: 1fr; }
+  .flow-step:not(:last-child)::after { content: none; } /* 세로 배치에서는 화살표 숨김 */
+
+  /* STEP 3 추가: 수학 모델 페이지의 슬라이더·변수 목록도 1열로 */
+  .calc-grid, .var-list { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+<a class="skip-link" href="#main-content">본문 바로가기</a>
+
+<!-- ═══════════════ 고정 상단 내비게이션 ═══════════════ -->
+<header class="site-header">
+  <nav class="nav-inner" aria-label="주요 메뉴">
+    <!-- 로고: 클릭하면 홈(#home)으로 -->
+    <a class="logo" href="#home">
+      <!-- 로고 아이콘: 도로 위 위치 핀 (인라인 SVG) -->
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <rect x="2" y="20" width="26" height="6" rx="2" fill="#1B2A4A"/>
+        <line x1="6" y1="23" x2="10" y2="23" stroke="#F5C84B" stroke-width="2" stroke-linecap="round"/>
+        <line x1="14" y1="23" x2="18" y2="23" stroke="#F5C84B" stroke-width="2" stroke-linecap="round"/>
+        <path d="M15 2 C10.6 2 7 5.6 7 10 C7 16 15 21 15 21 C15 21 23 16 23 10 C23 5.6 19.4 2 15 2 Z" fill="#0E7490"/>
+        <circle cx="15" cy="10" r="3.2" fill="#fff"/>
+      </svg>
+      <span data-site-title>평촌 하원길 프로젝트</span>
+    </a>
+
+    <!-- 햄버거 버튼 (모바일 전용) -->
+    <button class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="메뉴 열기">
+      <svg width="22" height="18" viewBox="0 0 22 18" aria-hidden="true">
+        <line x1="1" y1="2"  x2="21" y2="2"  stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <line x1="1" y1="9"  x2="21" y2="9"  stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <line x1="1" y1="16" x2="21" y2="16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <!-- 메뉴 6개 (홈은 로고로 이동) -->
+    <ul class="nav-menu" id="nav-menu">
+      <li><a href="#problem">문제 현황</a></li>
+      <li><a href="#proposal">제안 개요</a></li>
+      <li><a href="#model">수학 모델</a></li>
+      <li><a href="#simulator">시뮬레이션</a></li>
+      <li><a href="#policy">정책 제안</a></li>
+      <li><a href="#team">팀 소개</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main-content">
+
+  <!-- ═══════════════ #home — 홈(히어로) ═══════════════ -->
+  <section class="page" id="home" aria-label="홈">
+    <div class="hero">
+      <div class="container">
+        <p class="hero-badge-row">
+          <span class="badge">안양시 정책 제안</span>
+          <span class="badge">고교 동아리 프로젝트</span>
+        </p>
+        <h1>
+          밤 10시 평촌 학원가,<br>
+          <span class="mark">수학</span>으로 하원길을 다시 설계합니다
+        </h1>
+        <p class="hero-sub">
+          구역 분할 부등식과 차량별 출발 시각 계산으로, 학원가 골목의 픽업 혼잡을
+          예측 가능하고 안전한 흐름으로 바꾸는 시(市) 주도 운영 시스템을 제안합니다.
+        </p>
+        <p class="hero-cta">
+          <a class="btn btn--primary" href="#model">수학 모델 보기</a>
+          <a class="btn btn--secondary" href="#simulator">시뮬레이션 보기</a>
+        </p>
+
+        <!-- 핵심 지표 카드 3개 (STEP 3 개편)
+             - 목표값만 구체적 수치를 표시합니다 ("목표" 태그 아래에서만!)
+             - 현황·실측값은 자리표시: 실측값은 이후 시뮬레이터 단계가
+               SLOT: home-result-* 자리에 계산 결과를 넣습니다. -->
+        <div class="stat-grid">
+          <div class="stat-card">
+            <p class="stat-metric">픽업존 평균 차량 대기시간</p>
+            <dl class="stat-rows">
+              <div class="stat-row">
+                <dt>개선 전(현황)</dt>
+                <dd class="value-pending">(관찰 데이터 입력 예정)</dd>
+              </div>
+              <div class="stat-row">
+                <dt class="tag-target">목표</dt>
+                <dd class="value-target">1분 미만</dd>
+              </div>
+              <div class="stat-row">
+                <dt class="tag-result">시뮬레이션 결과</dt>
+                <!-- SLOT: home-result-wait-time -->
+                <dd class="value-pending">(검증 예정)</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="stat-card">
+            <p class="stat-metric">골목 동시 체류 차량 수</p>
+            <dl class="stat-rows">
+              <div class="stat-row">
+                <dt>개선 전(현황)</dt>
+                <dd class="value-pending">(관찰 데이터 입력 예정)</dd>
+              </div>
+              <div class="stat-row">
+                <dt class="tag-target">목표</dt>
+                <dd class="value-target">5대 미만</dd>
+              </div>
+              <div class="stat-row">
+                <dt class="tag-result">시뮬레이션 결과</dt>
+                <!-- SLOT: home-result-concurrent-cars -->
+                <dd class="value-pending">(검증 예정)</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="stat-card">
+            <p class="stat-metric">골목 진입 차량 분산도(피크 평탄화)</p>
+            <dl class="stat-rows">
+              <div class="stat-row">
+                <dt>개선 전(현황)</dt>
+                <dd class="value-pending">(관찰 데이터 입력 예정)</dd>
+              </div>
+              <div class="stat-row">
+                <dt class="tag-target">목표</dt>
+                <dd class="value-target">20분간 균등 분산</dd>
+              </div>
+              <div class="stat-row">
+                <dt class="tag-result">시뮬레이션 결과</dt>
+                <!-- SLOT: home-result-peak-dispersion -->
+                <dd class="value-pending">(검증 예정)</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+        <p class="stat-caption">※ 목표값은 검증 대상이며, 실측값은 시뮬레이션 페이지에서 산출됩니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ #problem — 문제 현황 ═══════════════ -->
+  <section class="page" id="problem" aria-label="문제 현황">
+    <div class="container section-pad">
+      <span class="badge">PAGE 01</span>
+      <h2 class="section-title">문제 현황</h2>
+      <p class="section-lead">
+        평촌 학원가(안양시 동안구) 일대에서는 학원 수업이 끝나는 22시 전후, 학부모 픽업 차량이
+        좁은 뒷골목으로 한꺼번에 몰리는 혼잡이 만성적으로 반복되고 있습니다. 정차한 차량 사이로
+        학생들이 차도를 건너고 진입·회차 차량이 뒤엉키면서, 보행 안전에 대한 우려도 함께
+        제기되고 있습니다.
+      </p>
+
+      <!-- ── ① 현장 관찰 데이터 — 수치는 모두 수집 전입니다. 절대 임의의 숫자를 넣지 마세요! ── -->
+      <!-- SLOT: problem-stats -->
+      <!-- SLOT: problem-observation-cards -->
+      <h3 class="subsection-title">현장 관찰 데이터</h3>
+      <p class="subsection-note">아래 항목은 동아리가 현장에서 직접 관찰·기록하여 채울 예정입니다. 현재는 수집 전 상태입니다.</p>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="badge">수집 전</span>
+          <p class="metric-label">피크 시간대</p>
+          <p class="metric-value pending">(관찰 데이터 입력 예정)</p>
+        </div>
+        <div class="metric-card">
+          <span class="badge">수집 전</span>
+          <p class="metric-label">골목 동시 정차 차량(관찰)</p>
+          <p class="metric-value pending">(관찰 데이터 입력 예정)</p>
+        </div>
+        <div class="metric-card">
+          <span class="badge">수집 전</span>
+          <p class="metric-label">평균 대기 체감</p>
+          <p class="metric-value pending">(관찰 데이터 입력 예정)</p>
+        </div>
+        <div class="metric-card">
+          <span class="badge">수집 전</span>
+          <p class="metric-label">위험 상황 빈도</p>
+          <p class="metric-value pending">(관찰 데이터 입력 예정)</p>
+        </div>
+      </div>
+
+      <!-- ── ② 현장 사진 — 사진 파일이 준비되면 회색 상자를 <img>로 교체하세요 ── -->
+      <!-- SLOT: problem-photos -->
+      <h3 class="subsection-title">현장 사진</h3>
+      <div class="photo-grid">
+        <figure>
+          <div class="photo-placeholder">현장 사진 입력 예정</div>
+          <figcaption>사진 설명 입력 예정 ①</figcaption>
+        </figure>
+        <figure>
+          <div class="photo-placeholder">현장 사진 입력 예정</div>
+          <figcaption>사진 설명 입력 예정 ②</figcaption>
+        </figure>
+        <figure>
+          <div class="photo-placeholder">현장 사진 입력 예정</div>
+          <figcaption>사진 설명 입력 예정 ③</figcaption>
+        </figure>
+      </div>
+
+      <!-- ── ③ 골목 지도 (자료 준비 중) ── -->
+      <!-- SLOT: problem-map -->
+      <h3 class="subsection-title">골목 구조와 혼잡 지점</h3>
+      <div class="placeholder-box">학원가 골목 지도(혼잡 지점·픽업존 후보 위치 표시)가 들어갈 자리입니다. (자료 입력 예정)</div>
+
+      <!-- ── ④ 배경: 안양시 행정 계획 ── -->
+      <!-- SOURCE: 안양시 발표자료 링크 입력 예정 -->
+      <!-- SLOT: problem-city-plan-source -->
+      <h3 class="subsection-title">배경: 안양시 행정 계획</h3>
+      <div class="info-box">
+        <p>
+          안양시는 2029년까지 평촌동 931 일대에 300면 규모의 공영주차장을 조성하고,
+          뒷골목 노상 주차 구획을 학부모 픽업존으로 전환하는 계획을 추진하고 있습니다.
+          본 프로젝트는 이 행정 계획을 대체하는 것이 아니라, 그 위에서 작동하는
+          '운영 시스템(수학적 배차 알고리즘)'을 더하는 제안입니다.
+        </p>
+        <p class="source-note">출처: 안양시 발표 자료 (링크 입력 예정)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ #proposal — 제안 개요 ═══════════════ -->
+  <section class="page" id="proposal" aria-label="제안 개요">
+    <div class="container section-pad">
+      <span class="badge">PAGE 02</span>
+      <h2 class="section-title">제안 개요</h2>
+      <p class="section-lead">
+        안양시가 운영하는 회원제(학원·학부모 가입)로 하원 알림 인프라를 갖추고, 그 위에
+        동아리의 수학 알고리즘 — ① 픽업존 구역 분할, ② 수용량 기반 시간대 배정,
+        ③ 차량별 출발 시각 계산 — 을 얹어 골목 혼잡을 구조적으로 해소하는 시스템입니다.
+      </p>
+      <!-- NOTE: 지자체 주도 명분 상세는 #policy 페이지에서 다룸 -->
+      <p class="subsection-note">
+        왜 민간이 아닌 '시(市) 주도'여야 하는지(개인정보 보호·공신력)는
+        <a href="#policy">정책 제안</a> 페이지에서 자세히 다룹니다.
+      </p>
+
+      <!-- ── ① 2트랙 배차 모델 ── -->
+      <!-- SLOT: proposal-two-track -->
+      <h3 class="subsection-title">2트랙 배차 모델</h3>
+      <p class="subsection-note">학부모의 출발 위치에 따라 두 가지 방식으로 나누어 배차합니다.</p>
+      <div class="track-grid">
+        <article class="card track-card">
+          <!-- 트랙 1 아이콘: 주차장(P) 표지 -->
+          <svg class="track-icon" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+            <rect x="2" y="2" width="40" height="40" rx="9" fill="#1B2A4A"/>
+            <text x="22" y="30" text-anchor="middle" font-size="22" font-weight="800" fill="#FFFFFF">P</text>
+          </svg>
+          <span class="badge">TRACK 1</span>
+          <h4>주차장 대기형</h4>
+          <p class="track-summary">먼 거리에서 오는 학부모는 공영주차장에서 미리 대기합니다.</p>
+          <ul>
+            <li>대상: 타 지역·원거리 거주 학부모</li>
+            <li>평촌동 931 공영주차장에서 미리 대기</li>
+            <li>자녀의 하원 신호가 오면, 지정 픽업존으로 출발할 정확한 시각을 안내받음</li>
+          </ul>
+        </article>
+        <article class="card track-card">
+          <!-- 트랙 2 아이콘: 집 모양 -->
+          <svg class="track-icon" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+            <rect x="2" y="2" width="40" height="40" rx="9" fill="#0E7490"/>
+            <path d="M22 10 L35 22 L31 22 L31 34 L13 34 L13 22 L9 22 Z" fill="#FFFFFF"/>
+            <rect x="19.5" y="26" width="5" height="8" fill="#0E7490"/>
+          </svg>
+          <span class="badge">TRACK 2</span>
+          <h4>자택 출발형</h4>
+          <p class="track-summary">학원가 인근 학부모는 집에서 기다리다가 계산된 시각에 출발합니다.</p>
+          <ul>
+            <li>대상: 학원가 인근 거주 학부모</li>
+            <li>실시간 교통 상황을 반영해 시스템이 '골든 출발 시각'을 계산</li>
+            <li>자녀가 픽업존에 도착하는 순간에 맞춰 차량 도착 → 정차 시간 최소화</li>
+          </ul>
+        </article>
+      </div>
+
+      <!-- ── ② 작동 흐름 (개념 단계 — 수식은 #model 페이지에서 다룸) ── -->
+      <!-- SLOT: proposal-flow -->
+      <h3 class="subsection-title">작동 흐름</h3>
+      <ol class="flow-strip">
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">1</span>
+          <h4>하원 신호</h4>
+          <p>학원이 수업 종료를 시스템에 알립니다.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">2</span>
+          <h4>시스템 계산</h4>
+          <p>픽업존·시간대·차량별 출발 시각을 자동으로 산출합니다.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">3</span>
+          <h4>출발 알림</h4>
+          <p>학부모에게 문자/알림톡으로 출발 시각을 안내합니다.</p>
+        </li>
+      </ol>
+
+      <!-- ── ③ 다음 페이지로 안내 ── -->
+      <p class="callout">
+        수학적 원리는 <a href="#model">수학 모델</a> 페이지에서,
+        시청에 대한 요구사항은 <a href="#policy">정책 제안</a> 페이지에서 확인하세요.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══════════════ #model — 수학 모델 ═══════════════ -->
+  <section class="page" id="model" aria-label="수학 모델">
+    <div class="container section-pad">
+      <span class="badge">PAGE 03</span>
+      <h2 class="section-title">수학 모델</h2>
+      <p class="section-lead">
+        이 시스템은 공간 · 시간 · 개인의 3레이어 제어 구조로 설계되어 있습니다.
+        아래 수식의 입력값은 아직 가정값이지만, 결론을 끌어내는 논리(부등식 · 비둘기집 원리 · 역산)는
+        모두 고등학교 1학년 교과 수준의 수학입니다.
+      </p>
+
+      <!-- 3레이어 한눈에 보기 -->
+      <ol class="flow-strip">
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">1</span>
+          <h4>공간 — 구역 분할</h4>
+          <p>학원가를 k개의 픽업존으로 나눕니다. k는 처리량 부등식으로 도출합니다.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">2</span>
+          <h4>시간 — 슬롯 배정</h4>
+          <p>존마다 시간 슬롯을 만들어 차량이 겹치지 않게 배정합니다.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">3</span>
+          <h4>개인 — 출발 시각</h4>
+          <p>실시간 교통 데이터로 차량별 출발 시각을 역산합니다.</p>
+        </li>
+      </ol>
+
+      <!-- ── 레이어 ① 공간: 존 개수 도출 ── -->
+      <!-- SLOT: model-zone-inequality -->
+      <h3 class="subsection-title">레이어 ① 공간 — 픽업존은 몇 개가 필요한가?</h3>
+      <p class="subsection-note">
+        존 개수 k는 임의로 정하지 않습니다. "주어진 시간창 안에 모든 차량을 처리하려면
+        존이 최소 몇 개여야 하는가"를 처리량 부등식으로 도출합니다.
+      </p>
+      <div class="formula-box">
+        <p>
+          k ≥
+          <span class="frac" aria-label="c 곱하기 W 분의 N 곱하기 타우">
+            <span class="frac-top">N × τ</span>
+            <span class="frac-bottom">c × W</span>
+          </span>
+        </p>
+      </div>
+      <ul class="var-list">
+        <li><strong>k</strong> — 필요한 픽업존 개수 (도출 대상)</li>
+        <li><strong>N</strong> — 피크 시간창의 총 차량 수 <span class="badge">가정값</span></li>
+        <li><strong>τ</strong> — 차량 1대의 픽업존 점유시간(분) <span class="badge">가정값</span></li>
+        <li><strong>c</strong> — 존 1개의 동시 정차 면수 <span class="badge">가정값</span></li>
+        <li><strong>W</strong> — 운영 시간창(분) <span class="badge">가정값</span></li>
+      </ul>
+
+      <!-- 인터랙티브: 필요 존 개수 도출기 (계산 로직은 <script>의 setupZoneCalc 함수) -->
+      <div class="card calc-panel">
+        <h4>필요 존 개수 도출기</h4>
+        <p class="subsection-note">
+          슬라이더로 가정값을 바꿔 보세요. 값이 바뀌어도 도출 논리(부등식)는 변하지 않습니다 —
+          관찰 데이터가 모이면 가정값만 실제 값으로 교체됩니다.
+        </p>
+        <div class="calc-grid">
+          <label class="calc-row">
+            <span class="calc-label">
+              <span>N · 피크 차량 수</span>
+              <span class="calc-value"><output id="out-n">300</output>대</span>
+            </span>
+            <input type="range" id="calc-n" min="100" max="500" step="10" value="300">
+          </label>
+          <label class="calc-row">
+            <span class="calc-label">
+              <span>τ · 1대당 점유시간</span>
+              <span class="calc-value"><output id="out-tau">1</output>분</span>
+            </span>
+            <input type="range" id="calc-tau" min="0.5" max="3" step="0.5" value="1">
+          </label>
+          <label class="calc-row">
+            <span class="calc-label">
+              <span>c · 존당 동시 정차 면수</span>
+              <span class="calc-value"><output id="out-c">3</output>면</span>
+            </span>
+            <input type="range" id="calc-c" min="1" max="6" step="1" value="3">
+          </label>
+          <label class="calc-row">
+            <span class="calc-label">
+              <span>W · 운영 시간창</span>
+              <span class="calc-value"><output id="out-w">20</output>분</span>
+            </span>
+            <input type="range" id="calc-w" min="10" max="40" step="5" value="20">
+          </label>
+        </div>
+        <div class="calc-result" aria-live="polite">
+          <p class="calc-math" id="calc-math">k ≥ (300 × 1) ÷ (3 × 20) = 5.00</p>
+          <p class="calc-conclusion">최소 필요 픽업존: <strong id="calc-kmin">5개</strong></p>
+          <p class="calc-note">※ 존 개수는 정수이므로 계산값을 올림합니다. 이보다 적으면 시간창 안에 모든 차량을 처리할 수 없습니다.</p>
+        </div>
+      </div>
+
+      <!-- ── 레이어 ② 시간: 슬롯 배정 ── -->
+      <!-- SLOT: model-slot-assignment -->
+      <h3 class="subsection-title">레이어 ② 시간 — 왜 '배정'이 필요한가?</h3>
+      <div class="info-box">
+        <p>
+          <strong>비둘기집 원리:</strong> 한 시간대의 정차 슬롯이 S개뿐인데 차량이 S대보다 많이 오면,
+          적어도 한 슬롯에는 반드시 2대 이상이 겹칩니다. 즉 "몰리지 않기"를 운에 맡길 수는 없으며,
+          시간을 나누어 배정하는 것이 수학적으로 필연입니다.
+        </p>
+      </div>
+      <p class="subsection-note">배정은 단순하고 공정한 그리디(greedy) 방식을 사용합니다.</p>
+      <ol class="flow-strip">
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">1</span>
+          <h4>정렬</h4>
+          <p>하원 시각이 빠른 순서로 차량을 정렬합니다.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">2</span>
+          <h4>배정</h4>
+          <p>각 차량에 해당 존에서 가장 빠른 빈 슬롯을 배정합니다.</p>
+        </li>
+        <li class="flow-step">
+          <span class="flow-num" aria-hidden="true">3</span>
+          <h4>역산</h4>
+          <p>슬롯 시각에서 주행시간을 빼서 출발 알림 시각을 계산합니다.</p>
+        </li>
+      </ol>
+
+      <!-- ── 레이어 ③ 개인: 출발 시각 부등식 ── -->
+      <!-- SLOT: model-departure-inequality -->
+      <h3 class="subsection-title">레이어 ③ 개인 — 우리 차는 언제 출발해야 하는가?</h3>
+      <p class="subsection-note">
+        차량이 학생 도착 시각의 60초 이내에 픽업존에 닿도록, 출발 시각의 허용 범위를 부등식으로 역산합니다.
+      </p>
+      <div class="formula-box">
+        <p>| T<sub>차량</sub> − T<sub>학생</sub> | &lt; 60초</p>
+        <p class="formula-small">t<sub>주행</sub> = s ÷ v &nbsp;(s: 출발지~픽업존 거리, v: 안양시 ITS 실시간 속도)</p>
+      </div>
+      <p>
+        실시간 속도 v로 주행시간 t<sub>주행</sub>을 구하면, 위 부등식을 만족하는
+        출발 시각 X<sub>start</sub>의 범위가 정해집니다. 트랙 1(주차장 대기형)은 931 주차장에서,
+        트랙 2(자택 출발형)는 집에서 — 출발 위치와 거리 s만 다를 뿐 같은 부등식이 적용됩니다.
+      </p>
+
+      <!-- ── 정직성 보완: 학생 대기시간도 공개 ── -->
+      <!-- SLOT: model-student-wait -->
+      <h3 class="subsection-title">숨기지 않는 한 가지 — 학생 대기시간</h3>
+      <div class="info-box">
+        <p>
+          슬롯 배정 때문에 학생이 픽업존에서 잠깐 기다리는 경우가 생길 수 있습니다.
+          본 제안은 이를 숨기지 않고, ① 픽업존마다 학생 안전 대기공간을 확보하고
+          ② '평균 학생 대기시간'을 차량 지표와 함께 공개하는 것을 전제로 합니다.
+        </p>
+        <p class="source-note">평균 학생 대기시간: (시뮬레이션 결과 — 검증 예정)</p>
+      </div>
+
+      <!-- ── 존 위치·커버리지 지도 (GitHub Pages 배포 후 네이버 지도 연동 예정) ── -->
+      <!-- SLOT: model-zone-map -->
+      <h3 class="subsection-title">존 위치 · 커버리지 지도</h3>
+      <div class="placeholder-box">
+        도출된 k개 픽업존의 위치와 커버리지를 표시할 지도 자리입니다.<br>
+        (네이버 지도 연동 — GitHub Pages 배포 후 예정)
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ #simulator — 시뮬레이션 ═══════════════ -->
+  <section class="page" id="simulator" aria-label="시뮬레이션">
+    <div class="container section-pad">
+      <span class="badge">PAGE 04</span>
+      <h2 class="section-title">시뮬레이션</h2>
+      <p class="section-lead">
+        수학 모델을 눈으로 확인할 수 있는 인터랙티브 시뮬레이터가 이 자리에 들어갑니다.
+        아래 컨테이너(#sim-root)는 이후 단계에서 시뮬레이터 본체로 채워집니다.
+      </p>
+
+      <!-- 시뮬레이터 전용 컨테이너: 이후 단계에서 이 div 내부만 교체합니다 -->
+      <div id="sim-root">
+        <!-- SLOT: simulator-ui -->
+        <p>🚧 인터랙티브 시뮬레이터 준비 중</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ #policy — 정책 제안 ═══════════════ -->
+  <section class="page" id="policy" aria-label="정책 제안">
+    <div class="container section-pad">
+      <span class="badge">PAGE 05</span>
+      <h2 class="section-title">정책 제안</h2>
+      <p class="section-lead">
+        안양시의 2029년 평촌동 931 주차장(300면) 및 픽업존 전환 계획과 연계하여,
+        시에 요청하는 두 가지 정책 사항을 정리할 페이지입니다.
+      </p>
+
+      <!-- SLOT: policy-demand-1 -->
+      <!-- SLOT: policy-demand-2 -->
+
+      <div class="placeholder-box">안양시에 드리는 두 가지 정책 요구가 들어갈 자리입니다. (콘텐츠 준비 중)</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ #team — 팀 소개 ═══════════════ -->
+  <section class="page" id="team" aria-label="팀 소개">
+    <div class="container section-pad">
+      <span class="badge">PAGE 06</span>
+      <h2 class="section-title">팀 소개</h2>
+      <p class="section-lead">
+        이 프로젝트를 만든 수학 동아리 <strong data-club-name>[동아리명]</strong>의
+        팀원과 활동 과정을 소개할 페이지입니다.
+      </p>
+
+      <!-- SLOT: team-members -->
+      <!-- SLOT: team-activity -->
+
+      <div class="placeholder-box">팀원 소개와 활동 기록이 들어갈 자리입니다. (콘텐츠 준비 중)</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════ 푸터 (모든 페이지 공통) ═══════════════ -->
+<footer class="site-footer">
+  <div class="container">
+    <p class="footer-club"><span data-site-title>평촌 하원길 프로젝트</span> · <span data-club-name>[동아리명]</span></p>
+    <p>본 사이트는 정책 제안을 위한 고등학교 동아리 프로젝트(MVP)입니다.</p>
+    <p>최종 수정일: <span data-last-updated>2026-06-12</span></p>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   사이트 기본 설정 — 이름이나 날짜는 여기서만 바꾸면 됩니다.
+   ═══════════════════════════════════════════════════ */
+const SITE_CONFIG = {
+  siteTitle: "평촌 하원길 프로젝트",  // 사이트 제목
+  clubName: "[동아리명]",             // 동아리 이름 (실제 이름으로 교체하세요)
+  lastUpdated: "2026-06-12",          // 최종 수정일
+};
+
+/* 존재하는 페이지 ID 목록 (최상단 계약 문서와 동일해야 함) */
+const PAGE_IDS = ["home", "problem", "proposal", "model", "simulator", "policy", "team"];
+
+/* ── 설정값을 화면에 반영 ──
+   data-site-title / data-club-name / data-last-updated 속성이
+   붙은 모든 요소의 글자를 SITE_CONFIG 값으로 바꿉니다. */
+function applyConfig() {
+  document.title = SITE_CONFIG.siteTitle;
+  document.querySelectorAll("[data-site-title]").forEach(function (el) {
+    el.textContent = SITE_CONFIG.siteTitle;
+  });
+  document.querySelectorAll("[data-club-name]").forEach(function (el) {
+    el.textContent = SITE_CONFIG.clubName;
+  });
+  document.querySelectorAll("[data-last-updated]").forEach(function (el) {
+    el.textContent = SITE_CONFIG.lastUpdated;
+  });
+}
+
+/* ── 해시 라우팅 ──
+   주소창의 #해시를 읽어서 해당 페이지만 보여줍니다.
+   예: index.html#model → #model 섹션만 표시.
+   브라우저 뒤로가기도 hashchange 이벤트로 자동 처리됩니다. */
+function route() {
+  // 1) 현재 해시를 읽고, 없거나 잘못된 값이면 "home"으로
+  let pageId = location.hash.replace("#", "");
+  if (PAGE_IDS.indexOf(pageId) === -1) pageId = "home";
+
+  // 2) 모든 페이지를 숨기고 해당 페이지만 표시
+  document.querySelectorAll(".page").forEach(function (section) {
+    section.classList.toggle("active", section.id === pageId);
+  });
+
+  // 3) 메뉴에서 현재 페이지 링크를 강조 (접근성: aria-current 함께 표시)
+  document.querySelectorAll(".nav-menu a").forEach(function (link) {
+    const isActive = link.getAttribute("href") === "#" + pageId;
+    link.classList.toggle("active", isActive);
+    if (isActive) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  });
+
+  // 4) 페이지가 바뀌면 맨 위로 스크롤하고, 모바일 메뉴는 닫기
+  window.scrollTo(0, 0);
+  closeMobileMenu();
+}
+
+/* ── 모바일 햄버거 메뉴 ── */
+const navToggle = document.getElementById("nav-toggle");
+const navMenu = document.getElementById("nav-menu");
+
+function closeMobileMenu() {
+  navMenu.classList.remove("open");
+  navToggle.setAttribute("aria-expanded", "false");
+  navToggle.setAttribute("aria-label", "메뉴 열기");
+}
+
+navToggle.addEventListener("click", function () {
+  const willOpen = !navMenu.classList.contains("open");
+  navMenu.classList.toggle("open", willOpen);
+  navToggle.setAttribute("aria-expanded", String(willOpen));
+  navToggle.setAttribute("aria-label", willOpen ? "메뉴 닫기" : "메뉴 열기");
+});
+
+/* ── 수학 모델 페이지: 필요 존 개수 도출기 ──
+   부등식  k ≥ (N × τ) / (c × W)  를 그대로 계산합니다.
+   슬라이더 값은 모두 "가정값"이며, 관찰 데이터가 모이면 교체합니다. */
+function setupZoneCalc() {
+  const elN = document.getElementById("calc-n");     // 피크 차량 수
+  const elTau = document.getElementById("calc-tau"); // 1대당 점유시간(분)
+  const elC = document.getElementById("calc-c");     // 존당 동시 정차 면수
+  const elW = document.getElementById("calc-w");     // 운영 시간창(분)
+  // 계산기 요소가 없으면 조용히 종료 (안전장치)
+  if (!elN || !elTau || !elC || !elW) return;
+
+  function update() {
+    const n = Number(elN.value);
+    const tau = Number(elTau.value);
+    const c = Number(elC.value);
+    const w = Number(elW.value);
+
+    // 1) 현재 슬라이더 값을 라벨 옆에 표시
+    document.getElementById("out-n").textContent = n;
+    document.getElementById("out-tau").textContent = tau;
+    document.getElementById("out-c").textContent = c;
+    document.getElementById("out-w").textContent = w;
+
+    // 2) 부등식 우변 계산 → 존은 쪼갤 수 없으므로 올림하여 최소 정수 개수 도출
+    const raw = (n * tau) / (c * w);
+    const kMin = Math.ceil(raw);
+
+    document.getElementById("calc-math").textContent =
+      "k ≥ (" + n + " × " + tau + ") ÷ (" + c + " × " + w + ") = " + raw.toFixed(2);
+    document.getElementById("calc-kmin").textContent = kMin + "개";
+  }
+
+  // 슬라이더를 움직일 때마다 다시 계산
+  [elN, elTau, elC, elW].forEach(function (el) {
+    el.addEventListener("input", update);
+  });
+  update(); // 첫 화면 표시
+}
+
+/* ── 시작 ── */
+applyConfig();
+setupZoneCalc(); // 수학 모델 페이지의 존 개수 도출기 연결
+window.addEventListener("hashchange", route); // 해시가 바뀔 때마다 페이지 전환
+route();                                      // 첫 진입 시 1회 실행
+</script>
+</body>
+</html>
